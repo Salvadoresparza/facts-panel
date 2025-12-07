@@ -1154,3 +1154,35 @@ footer {
   margin-bottom: 4px;
   text-align: center;
 }
+/* Botones bajo el recibo */
+.receipt-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.receipt-actions .btn {
+  flex: 1;
+}
+
+/* Imprimir solo el recibo */
+@media print {
+  body {
+    background: #ffffff;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .receipt-print-area,
+  .receipt-print-area * {
+    visibility: visible;
+  }
+
+  .receipt-print-area {
+    position: absolute;
+    inset: 0;
+    margin: 0 auto;
+  }
+}

@@ -71,9 +71,20 @@ export default function DashboardPage() {
 
     setQrData(JSON.stringify(payload));
 
-    const baseMessage = `Te compartimos tu recibo de ${businessName} por $${total.toFixed(
-      2
-    )} (${concept || "Consumo"}). Desde la app FACTS podrás descargar tu factura escaneando el QR del ticket.`;
+    const fechaLinea = now.toLocaleDateString();
+    const horaLinea = now.toLocaleTimeString().slice(0, 5);
+
+    const baseMessageLines = [
+      `Recibo de pago - ${businessName}`,
+      `RFC emisor: ${businessRFC}`,
+      `Fecha: ${fechaLinea}  Hora: ${horaLinea} h`,
+      `Concepto: ${concept || "Consumo"}`,
+      `Importe: $${total.toFixed(2)} (IVA incluido)`,
+      "",
+      "Para descargar tu factura, abre la app FACTS y escanea el código QR de este recibo."
+    ];
+
+    const baseMessage = baseMessageLines.join("\n");
 
     if (typeof window !== "undefined") {
       if (customerWhatsapp.trim()) {
@@ -159,7 +170,7 @@ export default function DashboardPage() {
             <h1>
               {view === "emisor" ? "Panel de emisor" : "Panel de cliente"}
             </h1>
-            <p className="dashboard-muted">
+          <p className="dashboard-muted">
               {view === "emisor"
                 ? "Ve tu actividad de facturación y genera recibos con QR."
                 : "Consulta y organiza las facturas que generas escaneando QR en negocios afiliados."}
@@ -314,7 +325,7 @@ export default function DashboardPage() {
                     que genere su factura desde la app FACTS.
                   </p>
 
-                  <div className="receipt">
+                  <div className="receipt receipt-print-area">
                     <div className="receipt-header">
                       <div className="receipt-business">
                         <strong>{businessName}</strong>
@@ -382,14 +393,22 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    style={{ marginTop: 8, width: "100%" }}
-                    onClick={handlePrint}
-                  >
-                    Imprimir / descargar PDF
-                  </button>
+                  <div className="receipt-actions">
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={handlePrint}
+                    >
+                      Imprimir recibo
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={handlePrint}
+                    >
+                      Descargar PDF
+                    </button>
+                  </div>
                 </div>
               </div>
             </section>
