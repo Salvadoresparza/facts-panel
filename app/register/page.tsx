@@ -9,27 +9,55 @@ export default function RegisterPage() {
   const router = useRouter();
   const [accountType, setAccountType] = useState<AccountType>("emisor");
 
-const handleSubmit = (e: FormEvent) => {
-  e.preventDefault();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordRepeat, setPasswordRepeat] = useState("");
 
-  // Guardamos el tipo de cuenta en el navegador
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem("facts_account_type", accountType);
-  }
+  // Datos específicos de emisor
+  const [businessName, setBusinessName] = useState("");
+  const [businessRFC, setBusinessRFC] = useState("");
 
-  if (accountType === "emisor") {
-    alert(
-      "Registro de demo como EMISOR creado. Te llevaremos a un panel de ejemplo de FACTS."
-    );
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+
+    if (password !== passwordRepeat) {
+      alert("Las contraseñas no coinciden.");
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      // Tipo de cuenta
+      window.localStorage.setItem("facts_account_type", accountType);
+
+      // Datos generales de la cuenta (podemos ir guardando lo básico)
+      window.localStorage.setItem("facts_user_name", fullName);
+      window.localStorage.setItem("facts_user_email", email);
+
+      if (accountType === "emisor") {
+        window.localStorage.setItem(
+          "facts_business_name",
+          businessName.trim()
+        );
+        window.localStorage.setItem(
+          "facts_business_rfc",
+          businessRFC.trim()
+        );
+      } else {
+        // Si es cliente, limpiamos datos de negocio para evitar ruido
+        window.localStorage.removeItem("facts_business_name");
+        window.localStorage.removeItem("facts_business_rfc");
+      }
+    }
+
+    const message =
+      accountType === "emisor"
+        ? "Tu cuenta para emitir facturas ha sido creada. Te llevaremos a tu panel."
+        : "Tu cuenta para administrar tus facturas ha sido creada. Te llevaremos a tu panel.";
+
+    alert(message);
     router.push("/dashboard");
-  } else {
-    alert(
-      "Registro de demo como CLIENTE creado. En producción, esta cuenta usaría la app FACTS para escanear QR y pedir facturas."
-    );
-    router.push("/dashboard");
-  }
-};
-
+  };
 
   return (
     <div className="auth-container">
@@ -42,7 +70,8 @@ const handleSubmit = (e: FormEvent) => {
         <h1 className="auth-title">Crea tu cuenta FACTS</h1>
         <p className="auth-sub">
           Elige cómo quieres usar FACTS: para emitir facturas como negocio o
-          profesional, o solo para pedir facturas como cliente final.
+          profesional, o para administrar las facturas que recibes como cliente
+          final.
         </p>
 
         {/* TIPO DE CUENTA */}
@@ -65,7 +94,7 @@ const handleSubmit = (e: FormEvent) => {
             }
             onClick={() => setAccountType("cliente")}
           >
-            Solo pido facturas
+            Administro mis facturas
           </button>
         </div>
 
@@ -84,6 +113,8 @@ const handleSubmit = (e: FormEvent) => {
                 className="input"
                 placeholder="Juan Pérez"
                 required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
               />
             </label>
 
@@ -94,6 +125,8 @@ const handleSubmit = (e: FormEvent) => {
                 className="input"
                 placeholder="tu.correo@ejemplo.com"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </label>
           </div>
@@ -106,6 +139,8 @@ const handleSubmit = (e: FormEvent) => {
                 className="input"
                 placeholder="••••••••"
                 required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </label>
 
@@ -116,6 +151,8 @@ const handleSubmit = (e: FormEvent) => {
                 className="input"
                 placeholder="••••••••"
                 required
+                value={passwordRepeat}
+                onChange={(e) => setPasswordRepeat(e.target.value)}
               />
             </label>
           </div>
@@ -136,6 +173,8 @@ const handleSubmit = (e: FormEvent) => {
                   className="input"
                   placeholder="Restaurante El Buen Sabor"
                   required
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
                 />
               </label>
 
@@ -147,6 +186,8 @@ const handleSubmit = (e: FormEvent) => {
                     className="input"
                     placeholder="XAXX010101000"
                     required
+                    value={businessRFC}
+                    onChange={(e) => setBusinessRFC(e.target.value)}
                   />
                 </label>
 
@@ -187,9 +228,8 @@ const handleSubmit = (e: FormEvent) => {
 
               <h2 className="auth-section-title">Planes y pagos</h2>
               <p className="auth-section-sub">
-                En esta versión demo no configuramos cobros reales. En producción,
-                elegirías tu plan y domiciliarías tu tarjeta desde el panel de
-                FACTS, con total flexibilidad.
+                Desde tu panel podrás elegir el plan que mejor se adapte a tu
+                operación y gestionar tus métodos de pago con total flexibilidad.
               </p>
             </>
           )}
@@ -197,7 +237,9 @@ const handleSubmit = (e: FormEvent) => {
           {/* SI ES CLIENTE FINAL */}
           {accountType === "cliente" && (
             <>
-              <h2 className="auth-section-title">Datos fiscales para facturación</h2>
+              <h2 className="auth-section-title">
+                Datos fiscales para facturación
+              </h2>
               <p className="auth-section-sub">
                 Usaremos estos datos para generar tus facturas cuando escanees un
                 QR en negocios afiliados a FACTS.
@@ -210,7 +252,6 @@ const handleSubmit = (e: FormEvent) => {
                     type="text"
                     className="input"
                     placeholder="XAXX010101000"
-                    required
                   />
                 </label>
 
@@ -248,8 +289,9 @@ const handleSubmit = (e: FormEvent) => {
           )}
 
           <p className="auth-note">
-            Esta es una versión de demostración. No se realizan validaciones con el
-            SAT ni cargos a tarjetas. El objetivo es mostrar el flujo de producto.
+            En este entorno no se realizan aún validaciones con el SAT ni cargos
+            a tarjetas. La conexión con timbrado y cobros se habilita al integrar
+            FACTS a tu operación real.
           </p>
 
           <button type="submit" className="btn btn-primary auth-submit">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 
 type DashboardView = "emisor" | "cliente";
@@ -10,27 +10,92 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const [view, setView] = useState<DashboardView>("emisor");
+  const [accountType, setAccountType] = useState<DashboardView | null>(null);
 
-  const [clientName, setClientName] = useState("");
+  const [businessName, setBusinessName] = useState("FACTS");
+  const [businessRFC, setBusinessRFC] = useState("XAXX010101000");
+
   const [amount, setAmount] = useState("");
   const [concept, setConcept] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerWhatsapp, setCustomerWhatsapp] = useState("");
+
   const [qrData, setQrData] = useState<string | null>(null);
+  const [receiptDate, setReceiptDate] = useState<Date | null>(null);
 
   const total = parseFloat(amount || "0");
-  const subtotal = total > 0 ? total / 1.16 : 0;
-  const iva = total > 0 ? total - subtotal : 0;
+
+  // Leer configuración básica desde el registro
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storedType = window.localStorage.getItem("facts_account_type");
+    if (storedType === "emisor" || storedType === "cliente") {
+      setAccountType(storedType);
+      setView(storedType);
+    }
+
+    const storedName = window.localStorage.getItem("facts_business_name");
+    const storedRfc = window.localStorage.getItem("facts_business_rfc");
+
+    if (storedName && storedName.trim().length > 0) {
+      setBusinessName(storedName);
+    }
+    if (storedRfc && storedRfc.trim().length > 0) {
+      setBusinessRFC(storedRfc);
+    }
+  }, []);
 
   const handleGenerateQr = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    if (isNaN(total) || total <= 0) {
+      alert("Ingresa un monto total mayor a 0.");
+      return;
+    }
+
+    const now = new Date();
+    setReceiptDate(now);
+
+    const dateString = now.toISOString().slice(0, 10);
+
     const payload = {
-      cliente: clientName || "Consumidor final",
+      negocio: businessName,
+      rfcEmisor: businessRFC,
       monto: total.toFixed(2),
       concepto: concept || "Consumo",
-      fecha: new Date().toISOString().slice(0, 10),
+      fecha: dateString,
+      contactoEmail: customerEmail || undefined,
+      contactoWhatsapp: customerWhatsapp || undefined,
     };
 
     setQrData(JSON.stringify(payload));
+
+    const baseMessage = `Te compartimos tu recibo de ${businessName} por $${total.toFixed(
+      2
+    )} (${concept || "Consumo"}). Desde la app FACTS podrás descargar tu factura escaneando el QR del ticket.`;
+
+    if (typeof window !== "undefined") {
+      if (customerWhatsapp.trim()) {
+        const phone = customerWhatsapp.replace(/[^0-9]/g, "");
+        const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(
+          baseMessage
+        )}`;
+        window.open(waUrl, "_blank");
+      } else if (customerEmail.trim()) {
+        const mailto = `mailto:${encodeURIComponent(
+          customerEmail
+        )}?subject=${encodeURIComponent(
+          "Tu recibo de pago"
+        )}&body=${encodeURIComponent(baseMessage)}`;
+        window.location.href = mailto;
+      }
+    }
+  };
+
+  const handlePrint = () => {
+    if (typeof window === "undefined") return;
+    window.print();
   };
 
   return (
@@ -41,6 +106,15 @@ export default function DashboardPage() {
           <div className="logo-mark">F</div>
           <span>FACTS</span>
         </div>
+
+        {accountType && (
+          <p className="dashboard-muted" style={{ fontSize: 11, marginBottom: 8 }}>
+            Te registraste como{" "}
+            <strong>
+              {accountType === "emisor" ? "emisor" : "cliente"}
+            </strong>
+          </p>
+        )}
 
         <nav className="dashboard-nav">
           {view === "emisor" ? (
@@ -55,7 +129,9 @@ export default function DashboardPage() {
 
               <div className="dashboard-nav-section">Configuración</div>
               <button className="dashboard-nav-item">Datos fiscales</button>
-              <button className="dashboard-nav-item">Planes y facturación</button>
+              <button className="dashboard-nav-item">
+                Planes y facturación
+              </button>
             </>
           ) : (
             <>
@@ -86,7 +162,7 @@ export default function DashboardPage() {
             <p className="dashboard-muted">
               {view === "emisor"
                 ? "Ve tu actividad de facturación y genera recibos con QR."
-                : "Consulta las facturas que generes escaneando QR en negocios afiliados."}
+                : "Consulta y organiza las facturas que generas escaneando QR en negocios afiliados."}
             </p>
           </div>
 
@@ -111,6 +187,11 @@ export default function DashboardPage() {
                 Cliente
               </button>
             </div>
+
+            <span className="chip">
+              <span className="chip-dot" />
+              {view === "emisor" ? "Modo emisor" : "Modo cliente"}
+            </span>
 
             <button className="btn btn-ghost" onClick={() => router.push("/")}>
               Cerrar sesión
@@ -137,7 +218,9 @@ export default function DashboardPage() {
               <div className="dashboard-card">
                 <h2>Facturas emitidas este mes</h2>
                 <p className="dashboard-number">72</p>
-                <p className="dashboard-muted">Límite de tu plan: 100 facturas</p>
+                <p className="dashboard-muted">
+                  Límite de tu plan: 100 facturas
+                </p>
               </div>
 
               <div className="dashboard-card">
@@ -152,7 +235,7 @@ export default function DashboardPage() {
                 <h2>Facturas generadas por tus clientes</h2>
                 <p className="dashboard-number">64</p>
                 <p className="dashboard-muted">
-                  89% de tus facturas ya se generan por autofacturación.
+                  La mayoría de tus facturas ya se generan por autofacturación.
                 </p>
               </div>
             </section>
@@ -162,22 +245,11 @@ export default function DashboardPage() {
               <div className="dashboard-qr-left">
                 <h2>Generar recibo con QR</h2>
                 <p className="dashboard-muted">
-                  Completa los datos del cliente y el importe. FACTS genera un
-                  recibo con QR para que tu cliente pueda autofacturarse.
+                  Completa el concepto y el importe. FACTS genera un recibo con
+                  QR para que tu cliente pueda solicitar su factura desde la app.
                 </p>
 
                 <form className="qr-form" onSubmit={handleGenerateQr}>
-                  <div className="field">
-                    <span>Nombre del cliente</span>
-                    <input
-                      className="input"
-                      type="text"
-                      placeholder="Juan Pérez"
-                      value={clientName}
-                      onChange={(e) => setClientName(e.target.value)}
-                    />
-                  </div>
-
                   <div className="qr-form-row">
                     <div className="field">
                       <span>Monto total</span>
@@ -204,6 +276,30 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
+                  <div className="qr-form-row">
+                    <div className="field">
+                      <span>WhatsApp del cliente (opcional)</span>
+                      <input
+                        className="input"
+                        type="tel"
+                        placeholder="521XXXXXXXXXX"
+                        value={customerWhatsapp}
+                        onChange={(e) => setCustomerWhatsapp(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="field">
+                      <span>Correo del cliente (opcional)</span>
+                      <input
+                        className="input"
+                        type="email"
+                        placeholder="cliente@correo.com"
+                        value={customerEmail}
+                        onChange={(e) => setCustomerEmail(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
                   <button type="submit" className="btn btn-primary">
                     Generar recibo
                   </button>
@@ -215,54 +311,54 @@ export default function DashboardPage() {
                   <h3>Recibo de pago</h3>
                   <p className="dashboard-muted">
                     Este es el recibo que entregas a tu cliente. El QR permite
-                    que genere su factura desde FACTS.
+                    que genere su factura desde la app FACTS.
                   </p>
 
                   <div className="receipt">
                     <div className="receipt-header">
                       <div className="receipt-business">
-                        <strong>FACTS RESTAURANTE</strong>
-                        <span>RFC: DEMO800101XXX</span>
-                        <span>Av. Ejemplo 123, Guadalajara, Jal.</span>
+                        <strong>{businessName}</strong>
+                        <span>RFC: {businessRFC}</span>
+                        <span>Dirección registrada en FACTS</span>
                       </div>
                       <div className="receipt-meta">
-                        <span>Fecha: {new Date().toLocaleDateString()}</span>
                         <span>
-                          Hora: {new Date().toLocaleTimeString().slice(0, 5)} h
+                          Fecha:{" "}
+                          {receiptDate
+                            ? receiptDate.toLocaleDateString()
+                            : "—"}
                         </span>
-                        <span>Folio: DEMO-0001</span>
+                        <span>
+                          Hora:{" "}
+                          {receiptDate
+                            ? `${receiptDate
+                                .toLocaleTimeString()
+                                .slice(0, 5)} h`
+                            : "—"}
+                        </span>
+                        <span>Folio: FACTS-0001</span>
                       </div>
                     </div>
 
                     <div className="receipt-body">
-                      <div className="receipt-client">
-                        {clientName
-                          ? `Cliente: ${clientName}`
-                          : "Cliente: Consumidor final"}
-                      </div>
                       <div className="receipt-concept">
                         {concept || "Consumo"}
                       </div>
 
                       <div className="receipt-amounts">
-                        <div className="receipt-row">
-                          <span>Subtotal</span>
-                          <span>
-                            {total > 0 ? `$${subtotal.toFixed(2)}` : "$0.00"}
-                          </span>
-                        </div>
-                        <div className="receipt-row">
-                          <span>IVA 16%</span>
-                          <span>
-                            {total > 0 ? `$${iva.toFixed(2)}` : "$0.00"}
-                          </span>
-                        </div>
                         <div className="receipt-row receipt-total">
-                          <span>Total</span>
+                          <span>Importe</span>
                           <span>
                             {total > 0 ? `$${total.toFixed(2)}` : "$0.00"}
                           </span>
                         </div>
+                      </div>
+
+                      <div className="receipt-row">
+                        <span> </span>
+                        <span style={{ fontSize: 10 }}>
+                          Precios ya incluyen IVA.
+                        </span>
                       </div>
                     </div>
 
@@ -276,10 +372,24 @@ export default function DashboardPage() {
                       )}
                     </div>
 
+                    <div className="receipt-qr-legend">
+                      Escanea este código con la app <strong>FACTS</strong> para
+                      descargar tu factura.
+                    </div>
+
                     <div className="receipt-footer">
                       <span>Recibo generado con factsmx.com</span>
                     </div>
                   </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ marginTop: 8, width: "100%" }}
+                    onClick={handlePrint}
+                  >
+                    Imprimir / descargar PDF
+                  </button>
                 </div>
               </div>
             </section>
@@ -336,8 +446,8 @@ export default function DashboardPage() {
                 <h2>Facturas guardadas</h2>
                 <p className="dashboard-number">0</p>
                 <p className="dashboard-muted">
-                  Aquí verás todas las facturas que generes escaneando QR con
-                  FACTS.
+                  Aquí verás todas las facturas que generes escaneando códigos
+                  QR con FACTS.
                 </p>
               </div>
 
@@ -345,7 +455,8 @@ export default function DashboardPage() {
                 <h2>Negocios afiliados</h2>
                 <p className="dashboard-number">0</p>
                 <p className="dashboard-muted">
-                  Muy pronto podrás ver en qué negocios ya puedes usar FACTS.
+                  Muy pronto podrás ver en qué negocios ya puedes usar FACTS
+                  para solicitar tus facturas.
                 </p>
               </div>
             </section>
@@ -354,14 +465,14 @@ export default function DashboardPage() {
               <div className="dashboard-table-header">
                 <h2>Mis facturas</h2>
                 <p className="dashboard-muted">
-                  En la versión real, aquí aparecerán las facturas que generes
-                  al escanear códigos QR con la app FACTS.
+                  Aquí se concentrará el historial de CFDIs que generes con la
+                  app FACTS.
                 </p>
               </div>
 
               <div className="dashboard-empty">
-                Aún no tienes facturas en esta demo. Imagina este espacio como
-                tu historial de CFDIs siempre a la mano.
+                Aún no tienes facturas aquí. Este espacio concentrará tu
+                historial de CFDIs siempre a la mano.
               </div>
             </section>
           </>

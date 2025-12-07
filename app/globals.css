@@ -1147,3 +1147,10 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+.receipt-qr-legend {
+  font-size: 9px;
+  color: #4b5563;
+  margin-top: -4px;
+  margin-bottom: 4px;
+  text-align: center;
+}
